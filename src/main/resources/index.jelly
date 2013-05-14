@@ -1,0 +1,3 @@
+<div>
+  Lets <code>build</code> and related REST build triggers be accessed even when anonymous users cannot see Jenkins.
+</div>
