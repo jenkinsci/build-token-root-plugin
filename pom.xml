@@ -6,7 +6,7 @@
         <version>1.480.3</version>
     </parent>
     <artifactId>build-token-root</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>Build Authorization Token Root Plugin</name>
     <description>Lets build and related REST build triggers be accessed even when anonymous users cannot see Jenkins.</description>
