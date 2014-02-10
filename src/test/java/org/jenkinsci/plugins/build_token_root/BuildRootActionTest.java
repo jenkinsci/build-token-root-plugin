@@ -26,17 +26,28 @@ package org.jenkinsci.plugins.build_token_root;
 
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import hudson.model.AbstractProject;
 import hudson.model.FreeStyleProject;
 import java.net.HttpURLConnection;
-import jenkins.model.Jenkins;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import static org.junit.Assert.*;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.PresetData;
 
 public class BuildRootActionTest {
+
+    private static final Logger logger = Logger.getLogger(BuildRootAction.class.getName());
+    @BeforeClass public static void logging() {
+        logger.setLevel(Level.ALL);
+        Handler handler = new ConsoleHandler();
+        handler.setLevel(Level.ALL);
+        logger.addHandler(handler);
+    }
 
     @Rule public JenkinsRule j = new JenkinsRule();
 

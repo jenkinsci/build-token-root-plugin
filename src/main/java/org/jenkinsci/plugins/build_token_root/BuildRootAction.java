@@ -38,9 +38,12 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
+import org.acegisecurity.AccessDeniedException;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.kohsuke.stapler.HttpResponses;
@@ -50,6 +53,8 @@ import org.kohsuke.stapler.StaplerResponse;
 
 @Extension
 public class BuildRootAction implements UnprotectedRootAction {
+
+    private static final Logger LOGGER = Logger.getLogger(BuildRootAction.class.getName());
 
     @Override public String getUrlName() {
         return "buildByToken";
@@ -64,9 +69,11 @@ public class BuildRootAction implements UnprotectedRootAction {
     }
 
     public void doBuild(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+        LOGGER.log(Level.FINE, "build on {0}", job);
         AbstractProject<?,?> p = project(job, req, rsp);
         ParametersDefinitionProperty pp = p.getProperty(ParametersDefinitionProperty.class);
         if (pp != null) {
+            LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "use buildWithParameters for this build");
         }
         Jenkins.getInstance().getQueue().schedule(p, p.getDelay(req), getBuildCause(req));
@@ -74,9 +81,11 @@ public class BuildRootAction implements UnprotectedRootAction {
     }
 
     public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+        LOGGER.log(Level.FINE, "buildWithParameters on {0}", job);
         AbstractProject<?,?> p = project(job, req, rsp);
         ParametersDefinitionProperty pp = p.getProperty(ParametersDefinitionProperty.class);
         if (pp == null) {
+            LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "use build for this build");
         }
         List<ParameterValue> values = new ArrayList<ParameterValue>();
@@ -91,6 +100,7 @@ public class BuildRootAction implements UnprotectedRootAction {
     }
 
     public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+        LOGGER.log(Level.FINE, "polling on {0}", job);
         project(job, req, rsp).schedulePolling();
         ok(rsp);
     }
@@ -105,18 +115,27 @@ public class BuildRootAction implements UnprotectedRootAction {
             SecurityContextHolder.setContext(orig);
         }
         if (p == null) {
+            LOGGER.log(Level.FINE, "no such job {0}", job);
             throw HttpResponses.notFound();
         }
         hudson.model.BuildAuthorizationToken authToken = p.getAuthToken();
         if (authToken == null || authToken.getToken() == null) {
             // For jobs without tokens, prefer not to leak information about their existence.
             // (We assume anonymous lacks DISCOVER.)
+            LOGGER.log(Level.FINE, "no authToken on {0}", job);
             throw HttpResponses.notFound();
         }
-        hudson.model.BuildAuthorizationToken.checkPermission(p, authToken, req, rsp);
+        try {
+            hudson.model.BuildAuthorizationToken.checkPermission(p, authToken, req, rsp);
+        } catch (AccessDeniedException x) {
+            LOGGER.log(Level.FINE, "on {0} was denied: {1}", new Object[] {job, x.getMessage()});
+            throw x;
+        }
         if (!p.isBuildable()) {
+            LOGGER.log(Level.FINE, "{0} is not buildable (disabled={1}", new Object[] {job, p.isDisabled()});
             throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not buildable"));
         }
+        LOGGER.log(Level.FINE, "found {0}", p);
         return p;
     }
 
