@@ -27,7 +27,6 @@ package org.jenkinsci.plugins.build_token_root;
 import hudson.Extension;
 import hudson.model.AbstractProject;
 import hudson.model.BuildAuthorizationToken;
-import hudson.model.BuildableItem;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
 import hudson.model.Job;
@@ -40,7 +39,6 @@ import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -48,6 +46,8 @@ import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import jenkins.model.Jenkins;
+import jenkins.model.ParameterizedJobMixIn;
+import jenkins.util.TimeDuration;
 import org.acegisecurity.AccessDeniedException;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -73,7 +73,8 @@ public class BuildRootAction implements UnprotectedRootAction {
         return null;
     }
 
-    public void doBuild(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+    public void doBuild(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job,
+                        @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "build on {0}", job);
         Job<?,?> p = project(job, req, rsp);
         ParametersDefinitionProperty pp = p.getProperty(ParametersDefinitionProperty.class);
@@ -81,11 +82,12 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "use buildWithParameters for this build");
         }
-        Jenkins.getInstance().getQueue().schedule((Queue.Task) p, getDelay(p, req), getBuildCause(req));
+        Jenkins.getInstance().getQueue().schedule((Queue.Task) p, delay.getTime(), getBuildCause(req));
         ok(rsp);
     }
 
-    public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+    public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job,
+                                      @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "buildWithParameters on {0}", job);
         Job<?,?> p = project(job, req, rsp);
         ParametersDefinitionProperty pp = p.getProperty(ParametersDefinitionProperty.class);
@@ -101,7 +103,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         		values.add(value);
         	}
         }
-        Jenkins.getInstance().getQueue().schedule((Queue.Task) p, getDelay(p, req), new ParametersAction(values), getBuildCause(req));
+        Jenkins.getInstance().getQueue().schedule((Queue.Task) p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
         ok(rsp);
     }
 
@@ -148,7 +150,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not buildable"));
         }
         if (!p.isBuildable()) {
-            LOGGER.log(Level.FINE, "{0} is not buildable (disabled={1}", new Object[] {job, isDisabled(p)});
+            LOGGER.log(Level.FINE, "{0} is not buildable (disabled={1}", new Object[] {job, p.isBuildable()});
             throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not buildable"));
         }
         LOGGER.log(Level.FINE, "found {0}", p);
@@ -170,53 +172,14 @@ public class BuildRootAction implements UnprotectedRootAction {
     // --- adapter methods for Job type which do follow AbstractProject semantic but don't inherit AbstractProject.
 
     private BuildAuthorizationToken getAuthToken(Job<?, ?> p) {
-        if (p instanceof AbstractProject) return ((AbstractProject) p).getAuthToken();
-
-        try {
-            Method m = p.getClass().getMethod("getAuthToken");
-            return (BuildAuthorizationToken) m.invoke(p);
-        } catch (Exception e) {
-            // Job does not support BuildAuthorizationToken
-        }
+        if (p instanceof ParameterizedJobMixIn.ParameterizedJob) return ((ParameterizedJobMixIn.ParameterizedJob) p).getAuthToken();
         return null;
-    }
-
-    private boolean isDisabled(Job<?, ?> p) {
-        if (p instanceof AbstractProject) return ((AbstractProject) p).isDisabled();
-
-        try {
-            Method m = p.getClass().getMethod("isDisabled");
-            return (Boolean) m.invoke(p);
-        } catch (Exception e) {
-            // Job can't be disabled
-        }
-        return false;
-    }
-
-    private int getDelay(Job<?, ?> p, StaplerRequest req) throws ServletException {
-        if (p instanceof AbstractProject) return ((AbstractProject) p).getDelay(req);
-
-        try {
-            Method m = p.getClass().getMethod("getDelay", int.class);
-            return (Integer) m.invoke(p);
-        } catch (Exception e) {
-            // Job doesn't define a delay
-        }
-        return 0;
     }
 
     private boolean schedulePolling(Job<?, ?> p) {
         if (p instanceof AbstractProject) {
             ((AbstractProject) p).schedulePolling();
             return true;
-        }
-
-        try {
-            Method m = p.getClass().getMethod("schedulePolling");
-            m.invoke(p);
-            return true;
-        } catch (Exception e) {
-            // Job can't be disabled
         }
         return false;
     }
