@@ -24,7 +24,6 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
-import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import hudson.model.FreeStyleProject;
 import java.net.HttpURLConnection;
@@ -51,6 +50,7 @@ public class BuildRootActionTest {
 
     @Rule public JenkinsRule j = new JenkinsRule();
 
+    @SuppressWarnings("deprecation") // RunList.size, BuildAuthorizationToken
     @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void build() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject("stuff");
@@ -60,15 +60,11 @@ public class BuildRootActionTest {
         form.getInputByName("pseudoRemoteTrigger").setChecked(true);
         form.getInputByName("authToken").setValueAttribute("secret");
         j.submit(form);
-        @SuppressWarnings("deprecation") hudson.model.BuildAuthorizationToken token = p.getAuthToken();
+        hudson.model.BuildAuthorizationToken token = p.getAuthToken();
         assertNotNull(token);
         assertEquals("secret", token.getToken());
         wc = j.createWebClient();
-        try { // XXX assertFails in 1.504+
-            fail("should have failed but got: " + wc.getPage(p, "build?token=secret"));
-        } catch (FailingHttpStatusCodeException x) {
-            assertEquals(HttpURLConnection.HTTP_FORBIDDEN, x.getStatusCode());
-        }
+        wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(0, p.getBuilds().size());
         wc.goTo("buildByToken/build?job=stuff&token=secret&delay=0sec");
@@ -77,15 +73,11 @@ public class BuildRootActionTest {
         wc.goTo("buildByToken/build?job=stuff&token=secret&delay=0sec");
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
-        try {
-            wc.goTo("buildByToken/build?job=stuff&token=socket&delay=0sec");
-        } catch (FailingHttpStatusCodeException x) {
-            assertEquals(HttpURLConnection.HTTP_FORBIDDEN, x.getStatusCode());
-        }
+        wc.assertFails("buildByToken/build?job=stuff&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
     }
 
-    // XXX test buildWithParameters, polling
+    // TODO test buildWithParameters, polling
 
 }
