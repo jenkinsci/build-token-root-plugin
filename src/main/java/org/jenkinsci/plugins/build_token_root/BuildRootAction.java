@@ -81,7 +81,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         ParametersDefinitionProperty pp = ((Job<?,?>) p).getProperty(ParametersDefinitionProperty.class);
         if (pp != null) {
             LOGGER.fine("wrong kind");
-            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "use buildWithParameters for this build");
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/buildWithParameters for this job since it takes parameters");
         }
         Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), getBuildCause(req));
         ok(rsp);
@@ -96,7 +96,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         ParametersDefinitionProperty pp = ((Job<?,?>) p).getProperty(ParametersDefinitionProperty.class);
         if (pp == null) {
             LOGGER.fine("wrong kind");
-            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "use build for this build");
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/build for this job since it takes no parameters");
         }
         List<ParameterValue> values = new ArrayList<ParameterValue>();
         for (ParameterDefinition d : pp.getParameterDefinitions()) {
