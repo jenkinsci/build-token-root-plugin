@@ -116,12 +116,12 @@ public class BuildRootAction implements UnprotectedRootAction {
         SCMTriggerItem scmp = SCMTriggerItem.SCMTriggerItems.asSCMTriggerItem(p);
         if (scmp == null) {
             LOGGER.log(Level.FINE, "{0} is not a SCMTriggerItem", p);
-            throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not a SCMTriggerItem"));
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, new IOException(job + " is not a SCMTriggerItem"));
         }
         SCMTrigger trigger = scmp.getSCMTrigger();
         if (trigger == null) {
             LOGGER.log(Level.FINE, "{0} is not configured to poll", p);
-            throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not configured to poll"));
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, new IOException(job + " is not configured to poll"));
         }
         trigger.run();
         ok(rsp);
@@ -160,7 +160,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         }
         if (!j.isBuildable()) {
             LOGGER.log(Level.FINE, "{0} is not buildable", job);
-            throw HttpResponses.error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, new IOException(job + " is not buildable"));
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, new IOException(job + " is not buildable"));
         }
         LOGGER.log(Level.FINE, "found {0}", p);
         return p;
