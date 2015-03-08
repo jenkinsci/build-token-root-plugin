@@ -24,21 +24,26 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
-import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import hudson.model.FreeStyleProject;
+import hudson.model.Job;
+import hudson.model.Run;
 import java.net.HttpURLConnection;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.ParameterizedJobMixIn;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.PresetData;
 
+@SuppressWarnings("deprecation") // RunList.size, BuildAuthorizationToken
 public class BuildRootActionTest {
 
     private static final Logger logger = Logger.getLogger(BuildRootAction.class.getName());
@@ -53,39 +58,44 @@ public class BuildRootActionTest {
 
     @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void build() throws Exception {
-        FreeStyleProject p = j.createFreeStyleProject("stuff");
+        testBuild(j.createFreeStyleProject("p"));
+    }
+
+    @SuppressWarnings("unchecked") // AbstractItem.getParent snafu
+    private <JobT extends Job<JobT, RunT> & ParameterizedJobMixIn.ParameterizedJob, RunT extends Run<JobT, RunT>> void testBuild(JobT p) throws Exception {
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login("alice", "alice");
         HtmlForm form = wc.getPage(p, "configure").getFormByName("config");
         form.getInputByName("pseudoRemoteTrigger").setChecked(true);
         form.getInputByName("authToken").setValueAttribute("secret");
         j.submit(form);
-        @SuppressWarnings("deprecation") hudson.model.BuildAuthorizationToken token = p.getAuthToken();
+        hudson.model.BuildAuthorizationToken token = p.getAuthToken();
         assertNotNull(token);
         assertEquals("secret", token.getToken());
         wc = j.createWebClient();
-        try { // XXX assertFails in 1.504+
-            fail("should have failed but got: " + wc.getPage(p, "build?token=secret"));
-        } catch (FailingHttpStatusCodeException x) {
-            assertEquals(HttpURLConnection.HTTP_FORBIDDEN, x.getStatusCode());
-        }
+        wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(0, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=stuff&token=secret&delay=0sec");
+        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec");
         j.waitUntilNoActivity();
         assertEquals(1, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=stuff&token=secret&delay=0sec");
+        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec");
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
-        try {
-            wc.goTo("buildByToken/build?job=stuff&token=socket&delay=0sec");
-        } catch (FailingHttpStatusCodeException x) {
-            assertEquals(HttpURLConnection.HTTP_FORBIDDEN, x.getStatusCode());
-        }
+        wc.assertFails("buildByToken/build?job=" + p.getFullName() + "&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
     }
 
-    // XXX test buildWithParameters, polling
+    // TODO test buildWithParameters, polling
+    // TODO test projects in folders
+
+    @Issue("JENKINS-26693")
+    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
+    @Test public void buildWorkflow() throws Exception {
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("", true));
+        testBuild(p);
+    }
 
 }
