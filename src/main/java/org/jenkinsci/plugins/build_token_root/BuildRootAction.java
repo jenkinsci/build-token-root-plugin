@@ -35,6 +35,7 @@ import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
+import hudson.security.csrf.CrumbExclusion;
 import hudson.triggers.SCMTrigger;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -42,8 +43,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.triggers.SCMTriggerItem;
@@ -62,9 +65,10 @@ import static javax.servlet.http.HttpServletResponse.SC_CREATED;
 public class BuildRootAction implements UnprotectedRootAction {
 
     private static final Logger LOGGER = Logger.getLogger(BuildRootAction.class.getName());
+    public static final String URLNAME = "buildByToken";
 
     @Override public String getUrlName() {
-        return "buildByToken";
+        return URLNAME;
     }
 
     @Override public String getIconFileName() {
@@ -107,10 +111,10 @@ public class BuildRootAction implements UnprotectedRootAction {
         }
         List<ParameterValue> values = new ArrayList<ParameterValue>();
         for (ParameterDefinition d : pp.getParameterDefinitions()) {
-        	ParameterValue value = d.createValue(req);
-        	if (value != null) {
-        		values.add(value);
-        	}
+            ParameterValue value = d.createValue(req);
+            if (value != null) {
+                values.add(value);
+            }
         }
         Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
         if (item != null) {
@@ -188,4 +192,21 @@ public class BuildRootAction implements UnprotectedRootAction {
         w.close();
     }
 
+    @Extension
+    public static class BuildRootActionCrumbExclusion extends CrumbExclusion {
+
+        @Override
+        public boolean process(HttpServletRequest req, HttpServletResponse resp, FilterChain chain) throws IOException, ServletException {
+            String pathInfo = req.getPathInfo();
+            if (pathInfo != null && pathInfo.startsWith(getExclusionPath())) {
+                chain.doFilter(req, resp);
+                return true;
+            }
+            return false;
+        }
+
+        public String getExclusionPath() {
+            return "/" + URLNAME + "/";
+        }
+    }
 }
