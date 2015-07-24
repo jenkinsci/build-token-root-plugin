@@ -24,7 +24,9 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.google.inject.matcher.Matchers;
 import hudson.model.Job;
 import hudson.model.Run;
 import java.net.HttpURLConnection;
@@ -33,6 +35,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.ParameterizedJobMixIn;
+import org.apache.commons.httpclient.HttpStatus;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
@@ -76,12 +79,16 @@ public class BuildRootActionTest {
         wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(0, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
+        Page page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
         j.waitUntilNoActivity();
         assertEquals(1, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
+        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
+        assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
+        page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
+        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
+        assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
         wc.assertFails("buildByToken/build?job=" + p.getFullName() + "&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
