@@ -76,10 +76,10 @@ public class BuildRootActionTest {
         wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
         j.waitUntilNoActivity();
         assertEquals(0, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec");
+        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
         j.waitUntilNoActivity();
         assertEquals(1, p.getBuilds().size());
-        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec");
+        wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
         j.waitUntilNoActivity();
         assertEquals(2, p.getBuilds().size());
         wc.assertFails("buildByToken/build?job=" + p.getFullName() + "&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);

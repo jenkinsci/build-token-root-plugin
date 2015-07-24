@@ -32,6 +32,7 @@ import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
+import hudson.model.Queue;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
 import hudson.triggers.SCMTrigger;
@@ -54,6 +55,8 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+
+import static javax.servlet.http.HttpServletResponse.SC_CREATED;
 
 @Extension
 public class BuildRootAction implements UnprotectedRootAction {
@@ -83,8 +86,12 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/buildWithParameters for this job since it takes parameters");
         }
-        Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), getBuildCause(req));
-        ok(rsp);
+        Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), getBuildCause(req));
+        if (item != null) {
+            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
+        } else {
+            rsp.sendRedirect(".");
+        }
     }
 
     public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
@@ -105,8 +112,12 @@ public class BuildRootAction implements UnprotectedRootAction {
         		values.add(value);
         	}
         }
-        Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
-        ok(rsp);
+        Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
+        if (item != null) {
+            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
+        } else {
+            rsp.sendRedirect(".");
+        }
     }
 
     public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
