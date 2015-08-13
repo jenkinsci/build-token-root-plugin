@@ -24,11 +24,17 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
+import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import com.google.inject.matcher.Matchers;
+import hudson.model.FreeStyleBuild;
+import hudson.model.FreeStyleProject;
 import hudson.model.Job;
+import hudson.model.ParametersAction;
+import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Run;
+import hudson.model.StringParameterDefinition;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
@@ -45,8 +51,9 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.PresetData;
+import org.xml.sax.SAXException;
 
-@SuppressWarnings("deprecation") // RunList.size, BuildAuthorizationToken
+@SuppressWarnings({"deprecation", "unchecked"}) // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
 public class BuildRootActionTest {
 
     private static final Logger logger = Logger.getLogger(BuildRootAction.class.getName());
@@ -64,8 +71,24 @@ public class BuildRootActionTest {
         testBuild(j.createFreeStyleProject("p"));
     }
 
-    @SuppressWarnings("unchecked") // AbstractItem.getParent snafu
     private <JobT extends Job<JobT, RunT> & ParameterizedJobMixIn.ParameterizedJob, RunT extends Run<JobT, RunT>> void testBuild(JobT p) throws Exception {
+        setAuthToken(p);
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
+        j.waitUntilNoActivity();
+        assertEquals(0, p.getBuilds().size());
+        Page page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
+        assertCreated(page);
+        assertEquals(1, p.getBuilds().size());
+        page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
+        assertCreated(page);
+        assertEquals(2, p.getBuilds().size());
+        wc.assertFails("buildByToken/build?job=" + p.getFullName() + "&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);
+        j.waitUntilNoActivity();
+        assertEquals(2, p.getBuilds().size());
+    }
+
+    private <JobT extends Job<JobT, RunT> & ParameterizedJobMixIn.ParameterizedJob, RunT extends Run<JobT, RunT>> void setAuthToken(JobT p) throws IOException, ElementNotFoundException, Exception, SAXException {
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login("alice", "alice");
         HtmlForm form = wc.getPage(p, "configure").getFormByName("config");
@@ -75,27 +98,13 @@ public class BuildRootActionTest {
         hudson.model.BuildAuthorizationToken token = p.getAuthToken();
         assertNotNull(token);
         assertEquals("secret", token.getToken());
-        wc = j.createWebClient();
-        wc.assertFails(p.getUrl() + "build?token=secret", HttpURLConnection.HTTP_FORBIDDEN);
-        j.waitUntilNoActivity();
-        assertEquals(0, p.getBuilds().size());
-        Page page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
-        j.waitUntilNoActivity();
-        assertEquals(1, p.getBuilds().size());
-        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
-        assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
-        page = wc.goTo("buildByToken/build?job=" + p.getFullName() + "&token=secret&delay=0sec", null);
-        j.waitUntilNoActivity();
-        assertEquals(2, p.getBuilds().size());
-        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
-        assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
-        wc.assertFails("buildByToken/build?job=" + p.getFullName() + "&token=socket&delay=0sec", HttpURLConnection.HTTP_FORBIDDEN);
-        j.waitUntilNoActivity();
-        assertEquals(2, p.getBuilds().size());
     }
 
-    // TODO test buildWithParameters, polling
-    // TODO test projects in folders
+    private void assertCreated(Page page) throws Exception {
+        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
+        assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
+        j.waitUntilNoActivity();
+    }
 
     @Issue("JENKINS-26693")
     @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
@@ -104,5 +113,24 @@ public class BuildRootActionTest {
         p.setDefinition(new CpsFlowDefinition("", true));
         testBuild(p);
     }
+
+    @Issue("JENKINS-28543")
+    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
+    @Test public void buildWithParameters() throws Exception {
+        FreeStyleProject p = j.createFreeStyleProject("p");
+        setAuthToken(p);
+        p.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("foo", null), new StringParameterDefinition("baz", null)));
+        assertCreated(j.createWebClient().goTo("buildByToken/buildWithParameters?job=" + p.getFullName() + "&token=secret&foo=bar&baz=quux", null));
+        FreeStyleBuild b = p.getLastBuild();
+        assertNotNull(b);
+        assertEquals(1, b.getNumber());
+        ParametersAction a = b.getAction(ParametersAction.class);
+        assertNotNull(a);
+        assertEquals("bar", a.getParameter("foo").getValue());
+        assertEquals("quux", a.getParameter("baz").getValue());
+    }
+
+    // TODO test polling
+    // TODO test projects in folders
 
 }
