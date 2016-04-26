@@ -42,6 +42,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.ParameterizedJobMixIn;
 import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.PostMethod;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
@@ -133,4 +135,22 @@ public class BuildRootActionTest {
     // TODO test polling
     // TODO test projects in folders
 
+    @Issue("JENKINS-25637")
+    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
+    @Test public void testCrumbBypass() throws Exception {
+        FreeStyleProject p = j.createFreeStyleProject("p");
+        setAuthToken(p);
+
+        HttpClient client = new HttpClient();
+
+        PostMethod post = new PostMethod(j.jenkins.getRootUrl() + "buildByToken/build");
+        post.addParameter("job", p.getFullName());
+        post.addParameter("token", "secret");
+        post.addParameter("delay", "0sec");
+        client.executeMethod(post);
+        assertEquals(post.getStatusLine().getReasonPhrase(), 201, post.getStatusCode());
+
+        j.waitUntilNoActivity();
+        assertEquals(1, p.getBuilds().size());
+    }
 }
