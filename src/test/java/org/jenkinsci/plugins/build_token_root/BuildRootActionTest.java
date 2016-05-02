@@ -25,7 +25,9 @@
 package org.jenkinsci.plugins.build_token_root;
 
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
+import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
+import com.gargoylesoftware.htmlunit.WebRequestSettings;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
@@ -36,14 +38,16 @@ import hudson.model.Run;
 import hudson.model.StringParameterDefinition;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.ParameterizedJobMixIn;
 import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.commons.httpclient.NameValuePair;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
@@ -141,14 +145,18 @@ public class BuildRootActionTest {
         FreeStyleProject p = j.createFreeStyleProject("p");
         setAuthToken(p);
 
-        HttpClient client = new HttpClient();
+        List<NameValuePair> parameters = new ArrayList<NameValuePair>();
+        parameters.add(new NameValuePair("job", p.getFullName()));
+        parameters.add(new NameValuePair("token", "secret"));
+        parameters.add(new NameValuePair("delay", "0sec"));
 
-        PostMethod post = new PostMethod(j.jenkins.getRootUrl() + "buildByToken/build");
-        post.addParameter("job", p.getFullName());
-        post.addParameter("token", "secret");
-        post.addParameter("delay", "0sec");
-        client.executeMethod(post);
-        assertEquals(post.getStatusLine().getReasonPhrase(), 201, post.getStatusCode());
+        WebRequestSettings buildTokenRequest = new WebRequestSettings(new URL(j.jenkins.getRootUrl() + "buildByToken/build"));
+        buildTokenRequest.setHttpMethod(HttpMethod.POST);
+        buildTokenRequest.setRequestParameters(parameters);
+
+        JenkinsRule.WebClient wc = j.createWebClient();
+        Page page = wc.getPage(buildTokenRequest);
+        assertEquals(page.getWebResponse().getStatusMessage(), 201, page.getWebResponse().getStatusCode());
 
         j.waitUntilNoActivity();
         assertEquals(1, p.getBuilds().size());
