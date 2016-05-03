@@ -24,6 +24,7 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -61,6 +62,7 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import static javax.servlet.http.HttpServletResponse.SC_CREATED;
 
+@SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() can be assumed non-null from web methods")
 @Extension
 public class BuildRootAction implements UnprotectedRootAction {
 
@@ -152,7 +154,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             SecurityContextHolder.setContext(orig);
         }
         if (j == null) {
-            LOGGER.log(Level.FINE, "no such job {0}", j);
+            LOGGER.log(Level.FINE, "no such job {0}", job);
             throw HttpResponses.notFound();
         }
         if (!(j instanceof ParameterizedJobMixIn.ParameterizedJob)) {

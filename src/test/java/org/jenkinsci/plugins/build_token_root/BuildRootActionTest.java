@@ -27,8 +27,9 @@ package org.jenkinsci.plugins.build_token_root;
 import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebRequestSettings;
+import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Job;
@@ -46,8 +47,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.ParameterizedJobMixIn;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
@@ -107,7 +106,7 @@ public class BuildRootActionTest {
     }
 
     private void assertCreated(Page page) throws Exception {
-        assertEquals(HttpStatus.SC_CREATED, page.getWebResponse().getStatusCode());
+        assertEquals(HttpURLConnection.HTTP_CREATED, page.getWebResponse().getStatusCode());
         assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
         j.waitUntilNoActivity();
     }
@@ -150,15 +149,13 @@ public class BuildRootActionTest {
         parameters.add(new NameValuePair("token", "secret"));
         parameters.add(new NameValuePair("delay", "0sec"));
 
-        WebRequestSettings buildTokenRequest = new WebRequestSettings(new URL(j.jenkins.getRootUrl() + "buildByToken/build"));
+        WebRequest buildTokenRequest = new WebRequest(new URL(j.jenkins.getRootUrl() + "buildByToken/build"));
         buildTokenRequest.setHttpMethod(HttpMethod.POST);
         buildTokenRequest.setRequestParameters(parameters);
 
         JenkinsRule.WebClient wc = j.createWebClient();
-        Page page = wc.getPage(buildTokenRequest);
-        assertEquals(page.getWebResponse().getStatusMessage(), 201, page.getWebResponse().getStatusCode());
+        assertCreated(wc.getPage(buildTokenRequest));
 
-        j.waitUntilNoActivity();
         assertEquals(1, p.getBuilds().size());
     }
 }
