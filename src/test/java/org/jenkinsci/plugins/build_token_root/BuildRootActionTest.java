@@ -24,12 +24,11 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
-import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequest;
-import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import hudson.model.AbstractProject;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Job;
@@ -37,7 +36,7 @@ import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Run;
 import hudson.model.StringParameterDefinition;
-import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -56,7 +55,6 @@ import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.recipes.PresetData;
-import org.xml.sax.SAXException;
 
 @SuppressWarnings({"deprecation", "unchecked"}) // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
 public class BuildRootActionTest {
@@ -93,13 +91,19 @@ public class BuildRootActionTest {
         assertEquals(2, p.getBuilds().size());
     }
 
-    private <JobT extends Job<JobT, RunT> & ParameterizedJobMixIn.ParameterizedJob, RunT extends Run<JobT, RunT>> void setAuthToken(JobT p) throws IOException, ElementNotFoundException, Exception, SAXException {
+    private <JobT extends Job<JobT, RunT> & ParameterizedJobMixIn.ParameterizedJob, RunT extends Run<JobT, RunT>> void setAuthToken(JobT p) throws Exception {
+        // TODO should this be a method in ParameterizedJob?
+        Field authTokenF = (p instanceof AbstractProject ? AbstractProject.class : p.getClass()).getDeclaredField("authToken");
+        authTokenF.setAccessible(true);
+        authTokenF.set(p, new hudson.model.BuildAuthorizationToken("secret"));
+        /* Too slow:
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.login("alice", "alice");
         HtmlForm form = wc.getPage(p, "configure").getFormByName("config");
         form.getInputByName("pseudoRemoteTrigger").setChecked(true);
         form.getInputByName("authToken").setValueAttribute("secret");
         j.submit(form);
+        */
         hudson.model.BuildAuthorizationToken token = p.getAuthToken();
         assertNotNull(token);
         assertEquals("secret", token.getToken());
