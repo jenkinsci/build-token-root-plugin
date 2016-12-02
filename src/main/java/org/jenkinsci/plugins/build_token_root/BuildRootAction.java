@@ -33,11 +33,14 @@ import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
+import hudson.model.StringParameterValue;
 import hudson.model.Queue;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
 import hudson.security.csrf.CrumbExclusion;
 import hudson.triggers.SCMTrigger;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -118,6 +121,7 @@ public class BuildRootAction implements UnprotectedRootAction {
                 values.add(value);
             }
         }
+        values.add(new StringParameterValue("RequestBody", readBody(req)));
         Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
         if (item != null) {
             rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
@@ -192,6 +196,17 @@ public class BuildRootAction implements UnprotectedRootAction {
         PrintWriter w = rsp.getWriter();
         w.write("Scheduled.\n");
         w.close();
+    }
+
+    private String readBody(StaplerRequest req) throws IOException {
+        StringBuffer jb = new StringBuffer();
+        String line = null;
+        BufferedReader reader = req.getReader();
+        while ((line = reader.readLine()) != null)
+            jb.append(line);
+        String body = jb.toString();
+        LOGGER.log(Level.FINE, "Request Received: {0}", body);
+        return body;
     }
 
     @Extension
