@@ -41,35 +41,31 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.*;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.recipes.PresetData;
+import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 
 @SuppressWarnings({"deprecation", "unchecked"}) // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
 public class BuildRootActionTest {
 
-    private static final Logger logger = Logger.getLogger(BuildRootAction.class.getName());
-    @BeforeClass public static void logging() {
-        logger.setLevel(Level.ALL);
-        Handler handler = new ConsoleHandler();
-        handler.setLevel(Level.ALL);
-        logger.addHandler(handler);
+    @Rule public JenkinsRule j = new JenkinsRule();
+    @Rule public LoggerRule logging = new LoggerRule().record(BuildRootAction.class, Level.ALL);
+
+    @Before public void noAnonymousReadAccess() {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy().grant(Jenkins.ADMINISTER).everywhere().toAuthenticated());
     }
 
-    @Rule public JenkinsRule j = new JenkinsRule();
-
-    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void build() throws Exception {
         testBuild(j.createFreeStyleProject("p"));
     }
@@ -116,7 +112,6 @@ public class BuildRootActionTest {
     }
 
     @Issue("JENKINS-26693")
-    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void buildWorkflow() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("", true));
@@ -124,7 +119,6 @@ public class BuildRootActionTest {
     }
 
     @Issue("JENKINS-28543")
-    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void buildWithParameters() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject("p");
         setAuthToken(p);
@@ -143,12 +137,11 @@ public class BuildRootActionTest {
     // TODO test projects in folders
 
     @Issue("JENKINS-25637")
-    @PresetData(PresetData.DataSet.NO_ANONYMOUS_READACCESS)
     @Test public void testCrumbBypass() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject("p");
         setAuthToken(p);
 
-        List<NameValuePair> parameters = new ArrayList<NameValuePair>();
+        List<NameValuePair> parameters = new ArrayList<>();
         parameters.add(new NameValuePair("job", p.getFullName()));
         parameters.add(new NameValuePair("token", "secret"));
         parameters.add(new NameValuePair("delay", "0sec"));

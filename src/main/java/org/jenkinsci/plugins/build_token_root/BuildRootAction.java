@@ -24,7 +24,6 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -46,8 +45,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import static javax.servlet.http.HttpServletResponse.SC_CREATED;
 import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.triggers.SCMTriggerItem;
@@ -60,9 +60,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
-import static javax.servlet.http.HttpServletResponse.SC_CREATED;
-
-@SuppressFBWarnings(value="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification="Jenkins.getInstance() can be assumed non-null from web methods")
 @Extension
 public class BuildRootAction implements UnprotectedRootAction {
 
@@ -111,7 +108,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/build for this job since it takes no parameters");
         }
-        List<ParameterValue> values = new ArrayList<ParameterValue>();
+        List<ParameterValue> values = new ArrayList<>();
         for (ParameterDefinition d : pp.getParameterDefinitions()) {
             ParameterValue value = d.createValue(req);
             if (value != null) {
@@ -189,9 +186,9 @@ public class BuildRootAction implements UnprotectedRootAction {
 
     private void ok(StaplerResponse rsp) throws IOException {
         rsp.setContentType("text/html");
-        PrintWriter w = rsp.getWriter();
-        w.write("Scheduled.\n");
-        w.close();
+        try (PrintWriter w = rsp.getWriter()) {
+            w.write("Scheduled.\n");
+        }
     }
 
     @Extension
