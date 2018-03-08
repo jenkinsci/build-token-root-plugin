@@ -25,15 +25,7 @@
 package org.jenkinsci.plugins.build_token_root;
 
 import hudson.Extension;
-import hudson.model.Cause;
-import hudson.model.CauseAction;
-import hudson.model.Job;
-import hudson.model.ParameterDefinition;
-import hudson.model.ParameterValue;
-import hudson.model.ParametersAction;
-import hudson.model.ParametersDefinitionProperty;
-import hudson.model.Queue;
-import hudson.model.UnprotectedRootAction;
+import hudson.model.*;
 import hudson.security.ACL;
 import hudson.security.csrf.CrumbExclusion;
 import hudson.triggers.SCMTrigger;
@@ -111,7 +103,16 @@ public class BuildRootAction implements UnprotectedRootAction {
         List<ParameterValue> values = new ArrayList<>();
         for (ParameterDefinition d : pp.getParameterDefinitions()) {
             ParameterValue value = d.createValue(req);
+            //if parameter is not found as request parameter, look as as a header
+            if (value == null || req.getParameterValues(d.getName()) == null) {
+                LOGGER.log(Level.FINEST,"Parameter '{0}' not found. Trying header='{1}'", new Object[]{d.getName(), req.getHeader(d.getName())});
+                if (req.getHeader(d.getName())!=null && d instanceof SimpleParameterDefinition) {
+                    LOGGER.log(Level.FINE, "Reading  parameter {0} from header ", d.getName());
+                    value = ((SimpleParameterDefinition) d).createValue(req.getHeader(d.getName()));
+                }
+            }
             if (value != null) {
+                LOGGER.log(Level.FINE, "parameter '{0}'= '{1}'", new Object[]{d.getName(), value.getValue()});
                 values.add(value);
             }
         }
