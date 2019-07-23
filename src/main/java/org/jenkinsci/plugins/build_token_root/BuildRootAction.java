@@ -185,7 +185,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         return new CauseAction(new Cause.RemoteCause(req.getRemoteAddr(), req.getParameter("cause")));
     }
 
-    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "Java 11 SpotBugs bug?")
+    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "https://github.com/spotbugs/spotbugs/issues/756")
     private void ok(StaplerResponse rsp) throws IOException {
         rsp.setContentType("text/html");
         try (PrintWriter w = rsp.getWriter()) {
