@@ -24,6 +24,7 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -184,6 +185,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         return new CauseAction(new Cause.RemoteCause(req.getRemoteAddr(), req.getParameter("cause")));
     }
 
+    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "Java 11 SpotBugs bug?")
     private void ok(StaplerResponse rsp) throws IOException {
         rsp.setContentType("text/html");
         try (PrintWriter w = rsp.getWriter()) {
