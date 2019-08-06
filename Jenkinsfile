@@ -1,1 +1,1 @@
-buildPlugin(jenkinsVersions: [null, '2.89.3'])
+buildPlugin(useAci: true, configurations: buildPlugin.recommendedConfigurations())
