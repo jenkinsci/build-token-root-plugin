@@ -1,1 +1,4 @@
-buildPlugin(useAci: true, configurations: buildPlugin.recommendedConfigurations())
+node('maven') {
+    sh 'git remote -v'
+}
+
