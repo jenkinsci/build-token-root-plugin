@@ -1,0 +1,2 @@
+_extends: .github
+tag-template: build-token-root-$NEXT_MINOR_VERSION
