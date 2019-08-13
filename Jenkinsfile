@@ -1,1 +1,5 @@
-buildPlugin(useAci: true, configurations: buildPlugin.recommendedConfigurations())
+node('maven') {
+    checkout scm
+    sh 'git remote -v'
+    sh 'env | sort'
+}
