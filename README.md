@@ -34,19 +34,14 @@ you set here is what you will pass via the url.
 Examples
 --------
 
-Trigger the **RevolutionTest** job with the token **TacoTuesday**
+Trigger the **RevolutionTest** job with the token **TacoTuesday**:
 
-+-----------------------------------------------------------------------+
-|     buildByToken/build?job=RevolutionTest&token=TacoTuesday           |
-+-----------------------------------------------------------------------+
+    buildByToken/build?job=RevolutionTest&token=TacoTuesday
 
 Trigger the **RevolutionTest** job with the token **TacoTuesday** and
-parameter **Type** supplied with the value **Mexican**
+parameter **Type** supplied with the value **Mexican**:
 
-+-----------------------------------------------------------------------+
-|     buildByToken/buildWithParameters?job=RevolutionTest&token=TacoTue |
-| sday&Type=Mexican                                                     |
-+-----------------------------------------------------------------------+
+    buildByToken/buildWithParameters?job=RevolutionTest&token=TacoTuesday&Type=Mexican
 
 Changelog
 ---------
@@ -71,7 +66,7 @@ See GitHub releases.
 -   [JENKINS-26693](https://issues.jenkins-ci.org/browse/JENKINS-26693)
     Ability to trigger Workflow builds.
 
-### Version 1.1 (2014 Feb 10)
+### Version 1.1 (2014 Feb 10)h
 
 -   Added logging to make it easier to diagnose why a given request was
     rejected. As a Jenkins admin, create a logger covering
