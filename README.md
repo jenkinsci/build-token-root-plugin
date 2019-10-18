@@ -66,7 +66,7 @@ See GitHub releases.
 -   [JENKINS-26693](https://issues.jenkins-ci.org/browse/JENKINS-26693)
     Ability to trigger Workflow builds.
 
-### Version 1.1 (2014 Feb 10)h
+### Version 1.1 (2014 Feb 10)
 
 -   Added logging to make it easier to diagnose why a given request was
     rejected. As a Jenkins admin, create a logger covering
