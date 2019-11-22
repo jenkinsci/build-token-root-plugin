@@ -11,7 +11,7 @@
     <packaging>hpi</packaging>
     <name>Build Authorization Token Root Plugin</name>
     <description>Lets build and related REST build triggers be accessed even when anonymous users cannot see Jenkins.</description>
-    <url>https://wiki.jenkins.io/display/JENKINS/Build+Token+Root+Plugin</url>
+    <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
     <licenses>
         <license>
             <name>MIT License</name>
