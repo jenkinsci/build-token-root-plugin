@@ -36,6 +36,7 @@ import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
+import hudson.security.ACLContext;
 import hudson.security.csrf.CrumbExclusion;
 import hudson.triggers.SCMTrigger;
 import java.io.IOException;
@@ -53,9 +54,6 @@ import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.triggers.SCMTriggerItem;
 import jenkins.util.TimeDuration;
-import org.acegisecurity.AccessDeniedException;
-import org.acegisecurity.context.SecurityContext;
-import org.acegisecurity.context.SecurityContextHolder;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -81,7 +79,7 @@ public class BuildRootAction implements UnprotectedRootAction {
 
     public void doBuild(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "build on {0}", job);
-        ParameterizedJobMixIn.ParameterizedJob p = project(job, req, rsp);
+        ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         if (delay == null) {
             delay = new TimeDuration(p.getQuietPeriod());
         }
@@ -90,7 +88,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/buildWithParameters for this job since it takes parameters");
         }
-        Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), getBuildCause(req));
+        Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), getBuildCause(req));
         if (item != null) {
             rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
         } else {
@@ -100,7 +98,7 @@ public class BuildRootAction implements UnprotectedRootAction {
 
     public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "buildWithParameters on {0}", job);
-        ParameterizedJobMixIn.ParameterizedJob p = project(job, req, rsp);
+        ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         if (delay == null) {
             delay = new TimeDuration(p.getQuietPeriod());
         }
@@ -116,7 +114,7 @@ public class BuildRootAction implements UnprotectedRootAction {
                 values.add(value);
             }
         }
-        Queue.Item item = Jenkins.getInstance().getQueue().schedule(p, delay.getTime(), new ParametersAction(values), getBuildCause(req));
+        Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), new ParametersAction(values), getBuildCause(req));
         if (item != null) {
             rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
         } else {
@@ -126,7 +124,7 @@ public class BuildRootAction implements UnprotectedRootAction {
 
     public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "polling on {0}", job);
-        ParameterizedJobMixIn.ParameterizedJob p = project(job, req, rsp);
+        ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         // AbstractProject.schedulePolling only adds one thing here: check for isDisabled. But in that case, !isBuildable, so we would not have gotten here anyway.
         SCMTriggerItem scmp = SCMTriggerItem.SCMTriggerItems.asSCMTriggerItem(p);
         if (scmp == null) {
@@ -143,13 +141,10 @@ public class BuildRootAction implements UnprotectedRootAction {
     }
 
     @SuppressWarnings("deprecation")
-    private ParameterizedJobMixIn.ParameterizedJob project(String job, StaplerRequest req, StaplerResponse rsp) throws IOException, HttpResponses.HttpResponseException {
+    private ParameterizedJobMixIn.ParameterizedJob<?, ?> project(String job, StaplerRequest req, StaplerResponse rsp) throws IOException, HttpResponses.HttpResponseException {
         Job<?,?> j;
-        SecurityContext orig = ACL.impersonate(ACL.SYSTEM);
-        try {
-            j = Jenkins.getInstance().getItemByFullName(job, Job.class);
-        } finally {
-            SecurityContextHolder.setContext(orig);
+        try (ACLContext c = ACL.as(ACL.SYSTEM)) {
+            j = Jenkins.get().getItemByFullName(job, Job.class);
         }
         if (j == null) {
             LOGGER.log(Level.FINE, "no such job {0}", job);
@@ -159,7 +154,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.log(Level.FINE, "{0} is not a ParameterizedJob", j);
             throw HttpResponses.notFound();
         }
-        ParameterizedJobMixIn.ParameterizedJob p = (ParameterizedJobMixIn.ParameterizedJob) j;
+        ParameterizedJobMixIn.ParameterizedJob<?, ?> p = (ParameterizedJobMixIn.ParameterizedJob) j;
         hudson.model.BuildAuthorizationToken authToken = p.getAuthToken();
         if (authToken == null || authToken.getToken() == null) {
             // For jobs without tokens, prefer not to leak information about their existence.
@@ -169,7 +164,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         }
         try {
             hudson.model.BuildAuthorizationToken.checkPermission((Job) p, authToken, req, rsp);
-        } catch (AccessDeniedException x) {
+        } catch (RuntimeException x) { // e.g., AccessDeniedException
             LOGGER.log(Level.FINE, "on {0} was denied: {1}", new Object[] {job, x.getMessage()});
             throw x;
         }
