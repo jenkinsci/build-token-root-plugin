@@ -50,7 +50,7 @@ jobs:
         distribution: 'adopt'
         java-version: 8
     - name: Release
-      uses: jglick/jenkins-maven-cd-action@2cde3bf6a312e8125d1694db835b84444b1dd22a # TODO https://github.com/jenkins-infra/jenkins-maven-cd-action/pull/14
+      uses: jglick/jenkins-maven-cd-action@mrp # TODO https://github.com/jenkins-infra/jenkins-maven-cd-action/pull/14
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
