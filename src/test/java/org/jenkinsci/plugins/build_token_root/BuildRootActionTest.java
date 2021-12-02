@@ -24,6 +24,7 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
+import com.cloudbees.hudson.plugins.folder.Folder;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequest;
@@ -134,7 +135,10 @@ public class BuildRootActionTest {
     }
 
     // TODO test polling
-    // TODO test projects in folders
+
+    @Test public void folders() throws Exception {
+        testBuild(j.createProject(Folder.class, "dir").createProject(FreeStyleProject.class, "prj"));
+    }
 
     @Issue("JENKINS-25637")
     @Test public void testCrumbBypass() throws Exception {
