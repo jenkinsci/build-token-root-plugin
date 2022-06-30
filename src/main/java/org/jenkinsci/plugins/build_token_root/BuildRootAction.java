@@ -182,7 +182,8 @@ public class BuildRootAction implements UnprotectedRootAction {
 
     private void handleScheduleResult(Queue.Item item, String job, StaplerRequest req, StaplerResponse rsp) throws HttpResponses.HttpResponseException, IOException {
         if (item != null) {
-            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
+            rsp.setStatus(SC_CREATED);
+            rsp.addHeader("Location", req.getContextPath() + '/' + item.getUrl());
         } else {
             rsp.sendRedirect(".");
         }
