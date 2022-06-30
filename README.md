@@ -27,6 +27,13 @@ interleaving `job/` string).
 (The variant sub-URIs `buildWithParameters` and `polling` are also
 supported, as is the usual `delay` query parameter.)
 
+The server replies with a “201 Created” status code when a build is
+queued successfully. When a build is already scheduled, the server
+replies with a “303 See Other”, the `Location` header pointing to the
+scheduled build URL. Clients without the `READ` permission on the build
+should not follow the redirect, as it will lead to a page they do not
+have permission to see.
+
 To create a token for your job, go to the job configuration, select
 **Trigger Builds Remotely** in the build triggers section. The token
 you set here is what you will pass via the url.
