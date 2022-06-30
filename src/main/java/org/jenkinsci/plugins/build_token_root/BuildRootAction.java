@@ -89,11 +89,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/buildWithParameters for this job since it takes parameters");
         }
         Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), getBuildCause(req));
-        if (item != null) {
-            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
-        } else {
-            rsp.sendRedirect(".");
-        }
+        handleScheduleResult(item, job, req, rsp);
     }
 
     public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
@@ -115,11 +111,7 @@ public class BuildRootAction implements UnprotectedRootAction {
             }
         }
         Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), new ParametersAction(values), getBuildCause(req));
-        if (item != null) {
-            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
-        } else {
-            rsp.sendRedirect(".");
-        }
+        handleScheduleResult(item, job, req, rsp);
     }
 
     public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
@@ -185,6 +177,14 @@ public class BuildRootAction implements UnprotectedRootAction {
         rsp.setContentType("text/html");
         try (PrintWriter w = rsp.getWriter()) {
             w.write("Scheduled.\n");
+        }
+    }
+
+    private void handleScheduleResult(Queue.Item item, String job, StaplerRequest req, StaplerResponse rsp) throws HttpResponses.HttpResponseException, IOException {
+        if (item != null) {
+            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
+        } else {
+            rsp.sendRedirect(".");
         }
     }
 
