@@ -34,6 +34,7 @@ import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Queue;
+import hudson.model.queue.ScheduleResult;
 import hudson.model.UnprotectedRootAction;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
@@ -50,6 +51,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import static javax.servlet.http.HttpServletResponse.SC_CREATED;
+import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
+import static javax.servlet.http.HttpServletResponse.SC_SEE_OTHER;
 import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.triggers.SCMTriggerItem;
@@ -88,12 +91,8 @@ public class BuildRootAction implements UnprotectedRootAction {
             LOGGER.fine("wrong kind");
             throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Use /buildByToken/buildWithParameters for this job since it takes parameters");
         }
-        Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), getBuildCause(req));
-        if (item != null) {
-            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
-        } else {
-            rsp.sendRedirect(".");
-        }
+        ScheduleResult result = Jenkins.get().getQueue().schedule2(p, delay.getTimeInSeconds(), getBuildCause(req));
+        handleScheduleResult(result, job, req, rsp);
     }
 
     public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
@@ -114,12 +113,8 @@ public class BuildRootAction implements UnprotectedRootAction {
                 values.add(value);
             }
         }
-        Queue.Item item = Jenkins.get().getQueue().schedule(p, delay.getTimeInSeconds(), new ParametersAction(values), getBuildCause(req));
-        if (item != null) {
-            rsp.sendRedirect(SC_CREATED, req.getContextPath() + '/' + item.getUrl());
-        } else {
-            rsp.sendRedirect(".");
-        }
+        ScheduleResult result = Jenkins.get().getQueue().schedule2(p, delay.getTimeInSeconds(), new ParametersAction(values), getBuildCause(req));
+        handleScheduleResult(result, job, req, rsp);
     }
 
     public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
@@ -185,6 +180,25 @@ public class BuildRootAction implements UnprotectedRootAction {
         rsp.setContentType("text/html");
         try (PrintWriter w = rsp.getWriter()) {
             w.write("Scheduled.\n");
+        }
+    }
+
+    private void handleScheduleResult(ScheduleResult result, String job, StaplerRequest req, StaplerResponse rsp) throws HttpResponses.HttpResponseException, IOException {
+        if (result.isAccepted()) {
+            Queue.Item item = result.getItem();
+            assert item != null;
+            String itemUrl = req.getContextPath() + '/' + item.getUrl();
+            if (result.isCreated()) {
+                rsp.setStatus(SC_CREATED);
+                rsp.addHeader("Location", itemUrl);
+            } else {
+                // Clients without the READ permission won’t be allowed to see
+                // the build, they should not follow the redirect.
+                rsp.sendRedirect(SC_SEE_OTHER, itemUrl);
+            }
+        } else {
+            LOGGER.log(Level.FINE, "Jenkins refused to queue job “{0}”", job);
+            throw HttpResponses.forbidden();
         }
     }
 

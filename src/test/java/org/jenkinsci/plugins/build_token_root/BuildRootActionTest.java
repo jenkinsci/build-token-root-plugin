@@ -28,6 +28,7 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.util.NameValuePair;
 import hudson.model.AbstractProject;
 import hudson.model.FreeStyleBuild;
@@ -37,6 +38,8 @@ import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Run;
 import hudson.model.StringParameterDefinition;
+import hudson.model.queue.QueueTaskFuture;
+import hudson.tasks.Shell;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -47,6 +50,10 @@ import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty;
+import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
+import static org.junit.Assert.*;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Rule;
@@ -110,6 +117,32 @@ public class BuildRootActionTest {
         assertEquals(HttpURLConnection.HTTP_CREATED, page.getWebResponse().getStatusCode());
         assertTrue(page.getWebResponse().getResponseHeaderValue("Location").contains("/queue/item/"));
         j.waitUntilNoActivity();
+    }
+
+    @Test public void responseStatus() throws Exception {
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("semaphore 'hang'", true));
+        p.addProperty(new DisableConcurrentBuildsJobProperty());
+        setAuthToken(p);
+        // Queue first build.
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("hang/1", b1);
+        // Queue second build, first is executing.
+        QueueTaskFuture<WorkflowRun> b2Future = p.scheduleBuild2(0);
+        String buildUrl = "buildByToken/build?job=p&token=secret";
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.setRedirectEnabled(false); // Client does not have permission to see the build.
+        wc.setThrowExceptionOnFailingStatusCode(false); // Accept status code above 299.
+        WebResponse resp = wc.goTo(buildUrl, "").getWebResponse();
+        assertEquals(HttpURLConnection.HTTP_SEE_OTHER, resp.getStatusCode());
+        assertTrue(resp.getResponseHeaderValue("Location").contains("/queue/item/"));
+        SemaphoreStep.success("hang/1", null);
+        WorkflowRun b2 = b2Future.waitForStart();
+        SemaphoreStep.waitForStart("hang/2", b2);
+        SemaphoreStep.success("hang/2", null);
+        j.waitForCompletion(b1);
+        j.waitForCompletion(b2);
+        assertEquals(2, p.getBuilds().size());
     }
 
     @Issue("JENKINS-26693")
