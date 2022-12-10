@@ -3,8 +3,8 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.51</version>
-        <relativePath />
+        <version>4.53</version>
+        <relativePath/>
     </parent>
     <artifactId>build-token-root</artifactId>
     <version>${changelist}</version>
@@ -27,15 +27,15 @@
     </developers>
     <properties>
         <changelist>999999-SNAPSHOT</changelist>
-        <jenkins.version>2.249.1</jenkins.version>
+        <jenkins.version>2.361.4</jenkins.version>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.249.x</artifactId>
-                <version>984.vb5eaac999a7e</version>
+                <artifactId>bom-2.361.x</artifactId>
+                <version>1742.vb_70478c1b_25f</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
