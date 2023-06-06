@@ -25,11 +25,11 @@
 package org.jenkinsci.plugins.build_token_root;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
-import com.gargoylesoftware.htmlunit.HttpMethod;
-import com.gargoylesoftware.htmlunit.Page;
-import com.gargoylesoftware.htmlunit.WebRequest;
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.util.NameValuePair;
+import org.htmlunit.HttpMethod;
+import org.htmlunit.Page;
+import org.htmlunit.WebRequest;
+import org.htmlunit.WebResponse;
+import org.htmlunit.util.NameValuePair;
 import hudson.model.AbstractProject;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
@@ -105,7 +105,7 @@ public class BuildRootActionTest {
         wc.login("alice", "alice");
         HtmlForm form = wc.getPage(p, "configure").getFormByName("config");
         form.getInputByName("pseudoRemoteTrigger").setChecked(true);
-        form.getInputByName("authToken").setValueAttribute("secret");
+        form.getInputByName("authToken").setValue("secret");
         j.submit(form);
         */
         hudson.model.BuildAuthorizationToken token = p.getAuthToken();
