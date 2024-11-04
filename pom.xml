@@ -27,15 +27,16 @@
     </developers>
     <properties>
         <changelist>999999-SNAPSHOT</changelist>
-        <jenkins.version>2.440.3</jenkins.version>
+        <jenkins.version>2.452.4</jenkins.version>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
+    <maven.compiler.release>17</maven.compiler.release>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.440.x</artifactId>
-                <version>3435.v238d66a_043fb_</version>
+                <artifactId>bom-2.452.x</artifactId>
+                <version>3613.v584fca_12cf5c</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
