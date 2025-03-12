@@ -24,7 +24,6 @@
 
 package org.jenkinsci.plugins.build_token_root;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -46,21 +45,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import static javax.servlet.http.HttpServletResponse.SC_CREATED;
-import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
-import static javax.servlet.http.HttpServletResponse.SC_SEE_OTHER;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import static jakarta.servlet.http.HttpServletResponse.SC_CREATED;
+import static jakarta.servlet.http.HttpServletResponse.SC_SEE_OTHER;
 import jenkins.model.Jenkins;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.triggers.SCMTriggerItem;
 import jenkins.util.TimeDuration;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 
 @Extension
 public class BuildRootAction implements UnprotectedRootAction {
@@ -80,7 +78,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         return null;
     }
 
-    public void doBuild(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
+    public void doBuild(StaplerRequest2 req, StaplerResponse2 rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "build on {0}", job);
         ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         if (delay == null) {
@@ -95,7 +93,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         handleScheduleResult(result, job, req, rsp);
     }
 
-    public void doBuildWithParameters(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
+    public void doBuildWithParameters(StaplerRequest2 req, StaplerResponse2 rsp, @QueryParameter String job, @QueryParameter TimeDuration delay) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "buildWithParameters on {0}", job);
         ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         if (delay == null) {
@@ -117,7 +115,7 @@ public class BuildRootAction implements UnprotectedRootAction {
         handleScheduleResult(result, job, req, rsp);
     }
 
-    public void doPolling(StaplerRequest req, StaplerResponse rsp, @QueryParameter String job) throws IOException, ServletException {
+    public void doPolling(StaplerRequest2 req, StaplerResponse2 rsp, @QueryParameter String job) throws IOException, ServletException {
         LOGGER.log(Level.FINE, "polling on {0}", job);
         ParameterizedJobMixIn.ParameterizedJob<?, ?> p = project(job, req, rsp);
         // AbstractProject.schedulePolling only adds one thing here: check for isDisabled. But in that case, !isBuildable, so we would not have gotten here anyway.
@@ -136,7 +134,7 @@ public class BuildRootAction implements UnprotectedRootAction {
     }
 
     @SuppressWarnings("deprecation")
-    private ParameterizedJobMixIn.ParameterizedJob<?, ?> project(String job, StaplerRequest req, StaplerResponse rsp) throws IOException, HttpResponses.HttpResponseException {
+    private ParameterizedJobMixIn.ParameterizedJob<?, ?> project(String job, StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, HttpResponses.HttpResponseException {
         Job<?,?> j;
         try (ACLContext c = ACL.as(ACL.SYSTEM)) {
             j = Jenkins.get().getItemByFullName(job, Job.class);
@@ -171,19 +169,18 @@ public class BuildRootAction implements UnprotectedRootAction {
         return p;
     }
 
-    private CauseAction getBuildCause(StaplerRequest req) {
+    private CauseAction getBuildCause(StaplerRequest2 req) {
         return new CauseAction(new Cause.RemoteCause(req.getRemoteAddr(), req.getParameter("cause")));
     }
 
-    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "https://github.com/spotbugs/spotbugs/issues/756")
-    private void ok(StaplerResponse rsp) throws IOException {
+    private void ok(StaplerResponse2 rsp) throws IOException {
         rsp.setContentType("text/html");
         try (PrintWriter w = rsp.getWriter()) {
             w.write("Scheduled.\n");
         }
     }
 
-    private void handleScheduleResult(ScheduleResult result, String job, StaplerRequest req, StaplerResponse rsp) throws HttpResponses.HttpResponseException, IOException {
+    private void handleScheduleResult(ScheduleResult result, String job, StaplerRequest2 req, StaplerResponse2 rsp) throws HttpResponses.HttpResponseException, IOException {
         if (result.isAccepted()) {
             Queue.Item item = result.getItem();
             assert item != null;
