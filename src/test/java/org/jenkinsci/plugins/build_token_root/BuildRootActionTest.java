@@ -39,7 +39,6 @@ import hudson.model.ParametersDefinitionProperty;
 import hudson.model.Run;
 import hudson.model.StringParameterDefinition;
 import hudson.model.queue.QueueTaskFuture;
-import hudson.tasks.Shell;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -54,7 +53,6 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import static org.junit.Assert.*;
-import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -63,7 +61,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.LoggerRule;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
 
-@SuppressWarnings({"deprecation", "unchecked"}) // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
+@SuppressWarnings("deprecation") // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
 public class BuildRootActionTest {
 
     @Rule public JenkinsRule j = new JenkinsRule();
