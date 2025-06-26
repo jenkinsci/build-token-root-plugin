@@ -52,27 +52,32 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import static org.junit.Assert.*;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.LogRecorder;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 @SuppressWarnings("deprecation") // RunList.size, BuildAuthorizationToken, AbstractItem.getParent snafu
-public class BuildRootActionTest {
+@WithJenkins
+class BuildRootActionTest {
 
-    @Rule public JenkinsRule j = new JenkinsRule();
-    @Rule public LoggerRule logging = new LoggerRule().record(BuildRootAction.class, Level.ALL);
+    private JenkinsRule j;
+    private final LogRecorder logging = new LogRecorder().record(BuildRootAction.class, Level.ALL);
 
-    @Before public void noAnonymousReadAccess() {
+    @BeforeEach
+    void noAnonymousReadAccess(JenkinsRule j) {
+        this.j = j;
         j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
         j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy().grant(Jenkins.ADMINISTER).everywhere().toAuthenticated());
     }
 
-    @Test public void build() throws Exception {
+    @Test
+    void build() throws Exception {
         testBuild(j.createFreeStyleProject("p"));
     }
 
@@ -117,7 +122,8 @@ public class BuildRootActionTest {
         j.waitUntilNoActivity();
     }
 
-    @Test public void responseStatus() throws Exception {
+    @Test
+    void responseStatus() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("semaphore 'hang'", true));
         p.addProperty(new DisableConcurrentBuildsJobProperty());
@@ -144,14 +150,16 @@ public class BuildRootActionTest {
     }
 
     @Issue("JENKINS-26693")
-    @Test public void buildWorkflow() throws Exception {
+    @Test
+    void buildWorkflow() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("", true));
         testBuild(p);
     }
 
     @Issue("JENKINS-28543")
-    @Test public void buildWithParameters() throws Exception {
+    @Test
+    void buildWithParameters() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject("p");
         setAuthToken(p);
         p.addProperty(new ParametersDefinitionProperty(new StringParameterDefinition("foo", null), new StringParameterDefinition("baz", null)));
@@ -167,12 +175,14 @@ public class BuildRootActionTest {
 
     // TODO test polling
 
-    @Test public void folders() throws Exception {
+    @Test
+    void folders() throws Exception {
         testBuild(j.createProject(Folder.class, "dir").createProject(FreeStyleProject.class, "prj"));
     }
 
     @Issue("JENKINS-25637")
-    @Test public void testCrumbBypass() throws Exception {
+    @Test
+    void testCrumbBypass() throws Exception {
         FreeStyleProject p = j.createFreeStyleProject("p");
         setAuthToken(p);
 
