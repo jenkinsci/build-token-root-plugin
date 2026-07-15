@@ -18,13 +18,6 @@
             <url>https://opensource.org/licenses/MIT</url>
         </license>
     </licenses>
-    <developers>
-        <developer>
-            <id>jglick</id>
-            <name>Jesse Glick</name>
-            <email>jglick@cloudbees.com</email>
-        </developer>
-    </developers>
     <properties>
         <changelist>999999-SNAPSHOT</changelist>
         <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
