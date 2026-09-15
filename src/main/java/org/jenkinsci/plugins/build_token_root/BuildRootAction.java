@@ -205,7 +205,11 @@ public class BuildRootAction implements UnprotectedRootAction {
         @Override
         public boolean process(HttpServletRequest req, HttpServletResponse resp, FilterChain chain) throws IOException, ServletException {
             String pathInfo = req.getPathInfo();
-            if (pathInfo != null && pathInfo.startsWith(getExclusionPath())) {
+            if (pathInfo != null && (pathInfo.startsWith(getExclusionPath()) ||
+                // BitBucket "circuit-breaker" stops firing webhook after certain number of 400+ http responses,
+                // so let's not exclude the crumb to prevent hudson.security.csrf.CrumbFilter.doFilter() returning 403.
+                pathInfo.startsWith("/queue/item/"))
+          ) {
                 chain.doFilter(req, resp);
                 return true;
             }
